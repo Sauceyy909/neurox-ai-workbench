@@ -26,10 +26,27 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "dist/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Neurox AI Workbench"
     },
     "linux": {
-      "target": "AppImage"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "desktop": {
+        "Name": "Neurox AI Workbench",
+        "Type": "Application",
+        "Categories": "Development;IDE;"
+      }
     }
   },
   "dependencies": {

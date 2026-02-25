@@ -30,12 +30,13 @@ fi
 
 echo "------------------------------------------------"
 echo "Select your target platform for the Desktop App:"
-echo "1) Windows (creates .exe installer)"
-echo "2) Linux (creates .AppImage)"
-echo "3) Development Mode (starts web server only)"
-echo "4) Exit"
+echo "1) Windows (creates .exe installer with shortcuts)"
+echo "2) Linux (creates .AppImage & .deb with shortcuts)"
+echo "3) Create Desktop Shortcut for current Dev version"
+echo "4) Development Mode (starts web server only)"
+echo "5) Exit"
 echo "------------------------------------------------"
-read -p "Enter choice [1-4]: " choice
+read -p "Enter choice [1-5]: " choice
 
 case $choice in
     1)
@@ -46,13 +47,33 @@ case $choice in
     2)
         echo "Building for Linux..."
         npm run electron:build -- --linux
-        echo "Success! Check the 'release' folder for the .AppImage file."
+        echo "Success! Check the 'release' folder for the .AppImage and .deb files."
         ;;
     3)
+        echo "Creating Desktop Shortcut..."
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            DESKTOP_FILE="$HOME/Desktop/neurox-workbench.desktop"
+            echo "[Desktop Entry]" > "$DESKTOP_FILE"
+            echo "Name=Neurox AI Workbench (Dev)" >> "$DESKTOP_FILE"
+            echo "Exec=cd $(pwd) && npm run electron:dev" >> "$DESKTOP_FILE"
+            echo "Icon=$(pwd)/dist/favicon.ico" >> "$DESKTOP_FILE"
+            echo "Type=Application" >> "$DESKTOP_FILE"
+            echo "Terminal=true" >> "$DESKTOP_FILE"
+            chmod +x "$DESKTOP_FILE"
+            echo "Linux shortcut created on Desktop."
+        elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+            # Create Windows shortcut using PowerShell
+            powershell.exe -ExecutionPolicy Bypass -Command "\$s=(New-Object -COM WScript.Shell).CreateShortcut([System.IO.Path]::Combine([Environment]::GetFolderPath('Desktop'), 'Neurox Workbench Dev.lnk'));\$s.TargetPath='npm.cmd';\$s.Arguments='run electron:dev';\$s.WorkingDirectory='$(pwd)';\$s.Save()"
+            echo "Windows shortcut created on Desktop."
+        else
+            echo "Shortcut creation not supported for this OS automatically."
+        fi
+        ;;
+    4)
         echo "Starting Development Server..."
         npm run dev
         ;;
-    4)
+    5)
         echo "Exiting..."
         exit 0
         ;;
