@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Neurox Workbench - Automated Installation Script
-# This script installs all dependencies and prepares the environment.
+# Neurox Workbench - Automated Installation & Build Script
+# This script handles dependencies and builds the native desktop application.
 
 echo "------------------------------------------------"
-echo "   Neurox Workbench Installation Started"
+echo "   Neurox Workbench AI - Desktop Installer"
 echo "------------------------------------------------"
 
 # 1. Check for Node.js
@@ -14,52 +14,51 @@ then
     exit 1
 fi
 
-# 2. Check for npm
-if ! command -v npm &> /dev/null
-then
-    echo "Error: npm is not installed. Please install npm first."
-    exit 1
-fi
-
 echo "Step 1: Installing dependencies..."
 npm install
 
-if [ $? -eq 0 ]; then
-    echo "Dependencies installed successfully."
-else
+if [ $? -ne 0 ]; then
     echo "Error: Failed to install dependencies."
     exit 1
 fi
 
-echo "Step 2: Setting up environment variables..."
+echo "Step 2: Environment Setup..."
 if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        echo ".env file created from .env.example. Please update your GEMINI_API_KEY in .env."
-    else
-        touch .env
-        echo ".env file created. Please add your GEMINI_API_KEY."
-    fi
-else
-    echo ".env file already exists, skipping."
-fi
-
-echo "Step 3: Building the application..."
-npm run build
-
-if [ $? -eq 0 ]; then
-    echo "Build completed successfully."
-else
-    echo "Error: Build failed."
-    exit 1
+    cp .env.example .env
+    echo ".env file created. Please ensure your GEMINI_API_KEY is set."
 fi
 
 echo "------------------------------------------------"
-echo "   Installation Complete!"
+echo "Select your target platform for the Desktop App:"
+echo "1) Windows (creates .exe installer)"
+echo "2) Linux (creates .AppImage)"
+echo "3) Development Mode (starts web server only)"
+echo "4) Exit"
 echo "------------------------------------------------"
-echo "To start the development server, run:"
-echo "  npm run dev"
-echo ""
-echo "To preview the production build, run:"
-echo "  npm run preview"
-echo "------------------------------------------------"
+read -p "Enter choice [1-4]: " choice
+
+case $choice in
+    1)
+        echo "Building for Windows..."
+        npm run electron:build -- --win
+        echo "Success! Check the 'release' folder for the .exe installer."
+        ;;
+    2)
+        echo "Building for Linux..."
+        npm run electron:build -- --linux
+        echo "Success! Check the 'release' folder for the .AppImage file."
+        ;;
+    3)
+        echo "Starting Development Server..."
+        npm run dev
+        ;;
+    4)
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid choice. Exiting."
+        exit 1
+        ;;
+esac
+

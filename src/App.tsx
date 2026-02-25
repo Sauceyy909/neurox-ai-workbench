@@ -120,6 +120,19 @@ void loop() {
 }
   `;
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen bg-[#0a0a0a] text-zinc-300 font-sans overflow-hidden">
       {/* Sidebar Navigation */}
@@ -178,6 +191,13 @@ void loop() {
           </div>
 
           <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/5">
+              <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                {isOnline ? 'Cloud Link Active' : 'Offline'}
+              </span>
+            </div>
+
             <button
               onClick={toggleSimulationMode}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all

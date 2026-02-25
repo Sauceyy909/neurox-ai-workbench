@@ -52,21 +52,33 @@ export const DeviceManager: React.FC = () => {
         // @ts-ignore
         const port = await navigator.serial.requestPort();
         addDevice({
-          name: 'USB Controller',
-          address: 'COM/TTY',
+          name: 'Arduino Uno',
+          address: 'Serial Port',
           type: 'ARDUINO',
           connectionType: 'USB'
         });
       } else {
-        alert('Web Serial not supported in this browser');
+        alert('Web Serial is not supported in your current browser. Please use Chrome or Edge for USB hardware support.');
       }
     } catch (e) {
       console.error('USB connection failed', e);
+      alert('Failed to connect to USB device. Ensure it is not being used by another application.');
     }
   };
 
   return (
     <div className="w-80 bg-[#151619] border-l border-white/5 p-6 flex flex-col gap-6 overflow-auto">
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-2">
+        <div className="flex items-center gap-2 text-amber-500 mb-1">
+          <Globe size={14} />
+          <span className="text-[10px] font-bold uppercase">Cloud Preview Mode</span>
+        </div>
+        <p className="text-[9px] text-amber-500/70 leading-relaxed">
+          Direct local network (Ethernet) and USB scanning are limited in the cloud. 
+          For full hardware integration, use the <b>Desktop App</b> build.
+        </p>
+      </div>
+
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Network Nodes</h3>
         <button 
