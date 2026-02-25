@@ -2,6 +2,8 @@
   "name": "neurox-workbench",
   "private": true,
   "version": "2.0.0",
+  "description": "Industrial AI Workbench for PLC Logic and HMI Design",
+  "author": "Neurox AI Team",
   "type": "module",
   "main": "electron/main.ts",
   "scripts": {
@@ -41,6 +43,7 @@
         "AppImage",
         "deb"
       ],
+      "maintainer": "Neurox AI Team <support@neurox.ai>",
       "category": "Development",
       "desktop": {
         "Name": "Neurox AI Workbench",
