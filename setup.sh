@@ -41,12 +41,18 @@ read -p "Enter choice [1-5]: " choice
 case $choice in
     1)
         echo "Building for Windows..."
-        npm run electron:build -- --win
+        if ! npm run electron:build -- --win; then
+            echo "Error: Windows build failed. Please check if 'electron:build' script exists in package.json"
+            exit 1
+        fi
         echo "Success! Check the 'release' folder for the .exe installer."
         ;;
     2)
         echo "Building for Linux..."
-        npm run electron:build -- --linux
+        if ! npm run electron:build -- --linux; then
+            echo "Error: Linux build failed. Please check if 'electron:build' script exists in package.json"
+            exit 1
+        fi
         
         DEB_FILE=$(ls release/*.deb 2>/dev/null | head -n 1)
         if [ -f "$DEB_FILE" ]; then
