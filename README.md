@@ -1,11 +1,64 @@
-<div align="center">
+# Neurox Workbench
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+An AI-powered PLC/VFD ladder logic editor and HMI builder with Arduino WiFi integration.
 
-  <h1>Built with AI Studio</h2>
+## Quick Installation
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+We have provided an automated setup script to get you started quickly.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### Prerequisites
 
-</div>
+- **Node.js**: Version 18 or higher.
+- **npm**: Usually comes with Node.js.
+
+### Automated Setup
+
+1. **Clone the repository** (or download the source code).
+2. **Make the setup script executable**:
+   ```bash
+   chmod +x setup.sh
+   ```
+3. **Run the setup script**:
+   ```bash
+   ./setup.sh
+   ```
+
+The script will:
+- Install all npm dependencies.
+- Create a `.env` file for your configuration.
+- Build the production assets.
+
+### Manual Installation
+
+If you prefer to install manually:
+
+```bash
+# Install dependencies
+npm install
+
+# Build the app
+npm run build
+
+# Start development server
+npm run dev
+```
+
+## Configuration
+
+Before running the app, ensure you have set up your environment variables in the `.env` file:
+
+```env
+GEMINI_API_KEY=your_api_key_here
+```
+
+## Features
+
+- **AI Assistant**: Generate PLC logic and HMI layouts using natural language prompts.
+- **Ladder Logic Editor**: Professional-grade ladder logic programming.
+- **HMI Builder**: Drag-and-drop interface for industrial dashboards.
+- **Device Manager**: Connect to Arduino, VFDs, and PLCs via WiFi, Ethernet, or USB.
+- **Arduino Bridge**: Built-in firmware generator for remote I/O.
+
+## License
+
+Apache-2.0
