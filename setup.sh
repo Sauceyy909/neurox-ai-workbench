@@ -47,7 +47,24 @@ case $choice in
     2)
         echo "Building for Linux..."
         npm run electron:build -- --linux
-        echo "Success! Check the 'release' folder for the .AppImage and .deb files."
+        
+        DEB_FILE=$(ls release/*.deb 2>/dev/null | head -n 1)
+        if [ -f "$DEB_FILE" ]; then
+            echo "Found package: $DEB_FILE"
+            echo "Attempting to install .deb package..."
+            if command -v sudo &> /dev/null; then
+                sudo apt install -y "./$DEB_FILE"
+                if [ $? -eq 0 ]; then
+                    echo "Installation successful!"
+                else
+                    echo "Error: Installation failed. You may need to install it manually using: sudo apt install ./$DEB_FILE"
+                fi
+            else
+                echo "Sudo not found. Please install manually: dpkg -i $DEB_FILE"
+            fi
+        else
+            echo "Error: .deb file not found in release folder."
+        fi
         ;;
     3)
         echo "Creating Desktop Shortcut..."
