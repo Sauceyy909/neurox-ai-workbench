@@ -7,7 +7,7 @@ import { motion } from 'motion/react';
 export const AIAssistant: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [apiKeyMissing] = useState(!process.env.AIzaSyB-q2v1F4rvLXgSwjhYWXQWHlWRRAyXLUE);
+  const [apiKeyMissing] = useState(!process.env."AIzaSyB-q2v1F4rvLXgSwjhYWXQWHlWRRAyXLUE");
   const { setFullState, getIOProfile } = useStore();
 
   const handleGenerate = async () => {
