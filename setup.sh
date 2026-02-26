@@ -50,7 +50,29 @@ case $choice in
         ;;
     2)
         echo "Building for Linux..."
-        if ! npm run electron:build -- --linux; then
+        # Check for the bad desktop property in package.json
+        if grep -q "\"desktop\":" package.json; then
+            echo "CRITICAL ERROR: Your package.json contains an invalid 'desktop' property inside 'linux'."
+            echo "Please overwrite your package.json with the one provided in the chat."
+            exit 1
+        fi
+
+        # Run the build steps manually to verify each one
+        echo "Running frontend build..."
+        npm run build || exit 1
+        
+        echo "Running electron main process build..."
+        npm run build:electron || exit 1
+        
+        # VERIFICATION: Ensure the entry file exists before packaging
+        if [ ! -f "dist/main.js" ]; then
+            echo "ERROR: Compiled entry file 'dist/main.js' was not found!"
+            echo "Check for TypeScript compilation errors above."
+            exit 1
+        fi
+
+        echo "Packaging application..."
+        if ! npx electron-builder --linux; then
             echo "Error: Linux build failed."
             exit 1
         fi

@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 
-export type ElementType = 'NO_CONTACT' | 'NC_CONTACT' | 'COIL' | 'TIMER' | 'COUNTER';
+export type ElementType = 
+  | 'NO_CONTACT' 
+  | 'NC_CONTACT' 
+  | 'COIL' 
+  | 'TON' 
+  | 'TOF' 
+  | 'CTU' 
+  | 'CTD' 
+  | 'MOVE' 
+  | 'ADD' 
+  | 'SUB' 
+  | 'BRANCH_START' 
+  | 'BRANCH_END';
 
 export interface LadderElement {
   id: string;
@@ -8,6 +20,7 @@ export interface LadderElement {
   variable: string;
   value?: any;
   params?: Record<string, any>;
+  parallel?: string[]; // IDs of elements in parallel with this one
 }
 
 export interface LadderRow {
@@ -73,19 +86,27 @@ interface PLCState {
     vfdFrequency: number;
     vfdCurrent: number;
     vfdTargetSpeed: number;
+    vfdAccelTime: number;
+    vfdDecelTime: number;
+    vfdMaxFreq: number;
   };
   
   // Actions
+  arduinoCode: string;
+  setArduinoCode: (code: string) => void;
   addRow: () => void;
   addElement: (rowId: string, type: ElementType) => void;
   updateElement: (rowId: string, elementId: string, updates: Partial<LadderElement>) => void;
   removeElement: (rowId: string, elementId: string) => void;
+  addParallelElement: (rowId: string, parentId: string, type: ElementType) => void;
   
   addWidget: (type: HMIWidget['type']) => void;
   updateWidget: (id: string, updates: Partial<HMIWidget>) => void;
   removeWidget: (id: string) => void;
   
   setVariable: (name: string, value: any) => void;
+  addVariable: (name: string, initialValue: any) => void;
+  removeVariable: (name: string) => void;
   toggleRunMode: () => void;
   toggleSimulationMode: () => void;
   updateSimulationData: (updates: Partial<PLCState['simulationData']>) => void;
@@ -113,12 +134,29 @@ export const useStore = create<PLCState>((set, get) => ({
   isRunMode: false,
   isDiscovering: false,
   isSimulationMode: true, // Default to simulation mode for testing
+  arduinoCode: `
+void setup() {
+  pinMode(D13, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(D13, HIGH);
+  delay(1000);
+  digitalWrite(D13, LOW);
+  delay(1000);
+}
+`,
   simulationData: {
     vfdSpeed: 0,
     vfdFrequency: 0,
     vfdCurrent: 0,
     vfdTargetSpeed: 0,
+    vfdAccelTime: 5.0,
+    vfdDecelTime: 5.0,
+    vfdMaxFreq: 60.0,
   },
+
+  setArduinoCode: (code) => set({ arduinoCode: code }),
 
   getIOProfile: () => {
     const state = get();
@@ -163,6 +201,25 @@ export const useStore = create<PLCState>((set, get) => ({
     } : row)
   })),
 
+  addParallelElement: (rowId, parentId, type) => set((state) => {
+    const newId = Math.random().toString(36).substr(2, 9);
+    const newElement: LadderElement = {
+      id: newId,
+      type,
+      variable: get().getIOProfile().inputs[0] || 'VAR',
+    };
+    
+    return {
+      rows: state.rows.map(row => row.id === rowId ? {
+        ...row,
+        elements: row.elements.map(el => el.id === parentId ? {
+          ...el,
+          parallel: [...(el.parallel || []), newId]
+        } : el).concat(newElement)
+      } : row)
+    };
+  }),
+
   addWidget: (type) => set((state) => ({
     widgets: [...state.widgets, {
       id: Math.random().toString(36).substr(2, 9),
@@ -185,6 +242,15 @@ export const useStore = create<PLCState>((set, get) => ({
   setVariable: (name, value) => set((state) => ({
     variables: { ...state.variables, [name]: value }
   })),
+
+  addVariable: (name, initialValue) => set((state) => ({
+    variables: { ...state.variables, [name]: initialValue }
+  })),
+
+  removeVariable: (name) => set((state) => {
+    const { [name]: _, ...rest } = state.variables;
+    return { variables: rest };
+  }),
 
   toggleRunMode: () => set((state) => ({ isRunMode: !state.isRunMode })),
 

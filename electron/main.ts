@@ -20,7 +20,8 @@ function createWindow() {
   if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:3000');
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    // In production, main.js is at the root of the dist folder
+    win.loadFile(path.join(__dirname, 'index.html'));
   }
 }
 

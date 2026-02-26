@@ -7,9 +7,12 @@ import React, { useState, useEffect } from 'react';
 import { LadderEditor } from './components/LadderEditor';
 import { HMIBuilder } from './components/HMIBuilder';
 import { DeviceManager } from './components/DeviceManager';
-import { AIAssistant } from './components/AIAssistant';
+import { AIChat } from './components/AIChat';
 import { SimulationPanel } from './components/SimulationPanel';
-import { useStore } from './store/useStore';
+import { VFDConfig } from './components/VFDConfig';
+import { ArduinoEditor } from './components/ArduinoEditor';
+import { TagEditor } from './components/TagEditor';
+import { useStore, LadderElement } from './store/useStore';
 import { 
   Cpu, 
   Layout, 
@@ -22,12 +25,15 @@ import {
   Zap,
   Code,
   Sparkles,
-  Box
+  Box,
+  MessageSquare,
+  ZapOff,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'LADDER' | 'HMI' | 'CODE' | 'AI' | 'SIM'>('LADDER');
+  const [activeTab, setActiveTab] = useState<'LADDER' | 'HMI' | 'ARDUINO' | 'AI' | 'SIM' | 'VFD' | 'TAGS'>('LADDER');
   const { 
     isRunMode, 
     toggleRunMode, 
@@ -51,14 +57,81 @@ export default function App() {
         let outputCoil = null;
 
         row.elements.forEach(el => {
+          let elState = false;
           const val = !!variables[el.variable];
           
-          if (el.type === 'NO_CONTACT') {
-            rungState = rungState && val;
-          } else if (el.type === 'NC_CONTACT') {
-            rungState = rungState && !val;
-          } else if (el.type === 'COIL') {
-            outputCoil = el.variable;
+          // Basic state of the element
+          if (el.type === 'NO_CONTACT') elState = val;
+          else if (el.type === 'NC_CONTACT') elState = !val;
+          else elState = true; // For other blocks, they might not block the rung unless they are timers/counters
+
+          // Handle Parallel (Holding) Contacts
+          if (el.parallel && el.parallel.length > 0) {
+            el.parallel.forEach(parallelId => {
+              const parallelEl = row.elements.find(e => e.id === parallelId);
+              if (parallelEl) {
+                const pVal = !!variables[parallelEl.variable];
+                if (parallelEl.type === 'NO_CONTACT') elState = elState || pVal;
+                else if (parallelEl.type === 'NC_CONTACT') elState = elState || !pVal;
+              }
+            });
+          }
+
+          switch (el.type) {
+            case 'NO_CONTACT':
+            case 'NC_CONTACT':
+              rungState = rungState && elState;
+              break;
+            case 'COIL':
+              outputCoil = el.variable;
+              break;
+            case 'TON': {
+              const timerVal = variables[el.variable] || 0;
+              const preset = el.params?.preset || 5000;
+              if (rungState) {
+                if (timerVal < preset) setVariable(el.variable, timerVal + 100);
+              } else {
+                setVariable(el.variable, 0);
+              }
+              rungState = rungState && (timerVal >= preset);
+              break;
+            }
+            case 'CTU': {
+              const countVal = variables[el.variable] || 0;
+              const preset = el.params?.preset || 10;
+              const prevInput = el.params?.prevInput || false;
+              if (rungState && !prevInput) setVariable(el.variable, countVal + 1);
+              el.params = { ...el.params, prevInput: rungState };
+              rungState = rungState && (countVal >= preset);
+              break;
+            }
+            case 'TOF': {
+              const timerVal = variables[el.variable] || 0;
+              const preset = el.params?.preset || 5000;
+              if (!rungState) {
+                if (timerVal < preset) setVariable(el.variable, timerVal + 100);
+              } else {
+                setVariable(el.variable, 0);
+              }
+              rungState = rungState && (timerVal < preset);
+              break;
+            }
+            case 'CTD': {
+              const countVal = variables[el.variable] || 0;
+              const preset = el.params?.preset || 0;
+              const prevInput = el.params?.prevInput || false;
+              if (rungState && !prevInput) setVariable(el.variable, countVal - 1);
+              el.params = { ...el.params, prevInput: rungState };
+              rungState = rungState && (countVal <= preset);
+              break;
+            }
+            case 'MOVE': {
+              if (rungState) {
+                const source = el.params?.source || 0;
+                setVariable(el.variable, source);
+              }
+              break;
+            }
           }
         });
 
@@ -70,12 +143,17 @@ export default function App() {
       // 2. Physics Simulation (VFD / Motors)
       if (isSimulationMode) {
         const motorOn = !!variables['Q0.1']; // Assume Q0.1 is Motor Run
-        const targetFreq = motorOn ? 60 : 0;
+        const targetFreq = motorOn ? simulationData.vfdMaxFreq : 0;
         
-        // Ramp frequency
+        // Ramp frequency based on Accel/Decel parameters
         const currentFreq = simulationData.vfdFrequency;
         const diff = targetFreq - currentFreq;
-        const step = diff > 0 ? 0.5 : -1.0; // Acceleration vs Deceleration
+        
+        // Accel/Decel step calculation (100ms interval)
+        const accelStep = (simulationData.vfdMaxFreq / (simulationData.vfdAccelTime * 10));
+        const decelStep = (simulationData.vfdMaxFreq / (simulationData.vfdDecelTime * 10));
+        
+        const step = diff > 0 ? accelStep : -decelStep;
         
         const nextFreq = Math.abs(diff) < Math.abs(step) ? targetFreq : currentFreq + step;
         const nextSpeed = (nextFreq / 60) * 1800;
@@ -155,10 +233,22 @@ void loop() {
             label="HMI" 
           />
           <NavButton 
-            active={activeTab === 'CODE'} 
-            onClick={() => setActiveTab('CODE')} 
+            active={activeTab === 'VFD'} 
+            onClick={() => setActiveTab('VFD')} 
+            icon={<Zap size={20} />} 
+            label="VFD" 
+          />
+          <NavButton 
+            active={activeTab === 'ARDUINO'} 
+            onClick={() => setActiveTab('ARDUINO')} 
             icon={<Code size={20} />} 
-            label="Sketch" 
+            label="Arduino" 
+          />
+          <NavButton 
+            active={activeTab === 'TAGS'} 
+            onClick={() => setActiveTab('TAGS')} 
+            icon={<Database size={20} />} 
+            label="Tags" 
           />
           <NavButton 
             active={activeTab === 'AI'} 
@@ -252,23 +342,37 @@ void loop() {
                 <HMIBuilder />
               </motion.div>
             )}
-            {activeTab === 'CODE' && (
+            {activeTab === 'VFD' && (
               <motion.div 
-                key="code"
+                key="vfd"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="flex-1 flex"
+              >
+                <VFDConfig />
+              </motion.div>
+            )}
+            {activeTab === 'ARDUINO' && (
+              <motion.div 
+                key="arduino"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="flex-1 bg-[#1a1b1e] p-8 overflow-auto"
+                className="flex-1 flex"
               >
-                <div className="max-w-3xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-white">Arduino Bridge Sketch</h2>
-                    <button className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-xs font-bold">Copy Code</button>
-                  </div>
-                  <pre className="bg-black/50 p-6 rounded-xl border border-white/5 text-emerald-500/80 font-mono text-sm leading-relaxed overflow-x-auto">
-                    {arduinoCode}
-                  </pre>
-                </div>
+                <ArduinoEditor />
+              </motion.div>
+            )}
+            {activeTab === 'TAGS' && (
+              <motion.div 
+                key="tags"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                className="flex-1 flex"
+              >
+                <TagEditor />
               </motion.div>
             )}
             {activeTab === 'AI' && (
@@ -277,10 +381,10 @@ void loop() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="flex-1 bg-[#0f1012] p-8 overflow-auto flex items-center justify-center"
+                className="flex-1 bg-[#0f1012] p-6 overflow-hidden flex flex-col items-center"
               >
-                <div className="w-full max-w-2xl">
-                  <AIAssistant />
+                <div className="w-full max-w-4xl h-full">
+                  <AIChat />
                 </div>
               </motion.div>
             )}

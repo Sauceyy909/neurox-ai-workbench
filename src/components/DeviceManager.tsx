@@ -19,16 +19,18 @@ export const DeviceManager: React.FC = () => {
       const response = await fetch('/api/discover');
       const data = await response.json();
       
+      let foundCount = 0;
       if (data.devices && Array.isArray(data.devices)) {
         data.devices.forEach((d: any) => {
           if (!devices.find(existing => existing.address === d.address)) {
             addDevice(d);
+            foundCount++;
           }
         });
       }
       
-      if (data.error) {
-        console.warn('Discovery warning:', data.error);
+      if (foundCount === 0) {
+        alert("Network Scan Complete: No devices found on the server's network. \n\nNOTE: Since this app is running in the Cloud, it cannot see your home/office network. Please use 'Manual Connection' to add your PLC/VFD using its Public IP or VPN address.");
       }
     } catch (error) {
       console.error('Discovery failed:', error);
@@ -47,48 +49,100 @@ export const DeviceManager: React.FC = () => {
 
   const handleUSBConnect = async () => {
     try {
+      if (!window.isSecureContext) {
+        alert('Web Serial requires a secure (HTTPS) connection. If you are in a preview environment, USB access may be restricted by iframe security policies.');
+        return;
+      }
+
       // @ts-ignore - Web Serial API
       if ('serial' in navigator) {
-        // @ts-ignore
-        const port = await navigator.serial.requestPort();
-        addDevice({
-          name: 'Arduino Uno',
-          address: 'Serial Port',
-          type: 'ARDUINO',
-          connectionType: 'USB'
-        });
+        try {
+          // @ts-ignore
+          const port = await navigator.serial.requestPort();
+          addDevice({
+            name: 'Arduino Uno',
+            address: 'Serial Port',
+            type: 'ARDUINO',
+            connectionType: 'USB'
+          });
+        } catch (err: any) {
+          if (err.name === 'SecurityError') {
+            alert('Security Error: USB access is blocked by the browser. This usually happens when the app is running inside an iframe (like this preview). \n\nTo fix this: Open the "Shared App URL" directly in a new tab.');
+          } else {
+            throw err;
+          }
+        }
       } else {
         alert('Web Serial is not supported in your current browser. Please use Chrome or Edge for USB hardware support.');
       }
     } catch (e) {
       console.error('USB connection failed', e);
-      alert('Failed to connect to USB device. Ensure it is not being used by another application.');
+      alert('Failed to connect to USB device. Ensure it is plugged in and not used by another app.');
     }
   };
 
+  const isCloud = window.location.hostname.includes('run.app') || window.location.hostname.includes('aistudio');
+
   return (
     <div className="w-80 bg-[#151619] border-l border-white/5 p-6 flex flex-col gap-6 overflow-auto">
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-2">
-        <div className="flex items-center gap-2 text-amber-500 mb-1">
-          <Globe size={14} />
-          <span className="text-[10px] font-bold uppercase">Cloud Preview Mode</span>
+      {isCloud && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-2">
+          <div className="flex items-center gap-2 text-amber-500 mb-1">
+            <Globe size={14} />
+            <span className="text-[10px] font-bold uppercase">Cloud Preview Mode</span>
+          </div>
+          <p className="text-[9px] text-amber-500/70 leading-relaxed">
+            Direct local network (Ethernet) and USB scanning are limited in the cloud. 
+            For full hardware integration, use the <b>Desktop App</b> build.
+          </p>
+          <button 
+            onClick={() => {
+              // This is a heuristic - we'll just trigger a chat message
+              const chatTab = document.querySelector('[aria-label="AI"]') as HTMLElement;
+              if (chatTab) chatTab.click();
+              // We can't easily trigger the chat from here without more complex state, 
+              // but we can at least provide a hint.
+              alert("I've switched you to the AI tab. Ask: 'Why can't I see my Arduino via USB?' for help.");
+            }}
+            className="mt-2 w-full py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 rounded text-[9px] font-bold uppercase tracking-wider transition-all border border-amber-500/30 flex items-center justify-center gap-1"
+          >
+            <Activity size={10} /> Troubleshoot Connection
+          </button>
         </div>
-        <p className="text-[9px] text-amber-500/70 leading-relaxed">
-          Direct local network (Ethernet) and USB scanning are limited in the cloud. 
-          For full hardware integration, use the <b>Desktop App</b> build.
-        </p>
-      </div>
+      )}
 
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-[0.2em]">Network Nodes</h3>
-        <button 
-          onClick={handleDiscovery}
-          disabled={isDiscovering}
-          className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all disabled:opacity-50"
-          title="Scan Network"
-        >
-          {isDiscovering ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => {
+              addDevice({
+                name: 'Demo PLC (Virtual)',
+                address: '192.168.1.50',
+                type: 'PLC',
+                connectionType: 'ETHERNET'
+              });
+              addDevice({
+                name: 'Demo VFD (Virtual)',
+                address: '192.168.1.60',
+                type: 'VFD',
+                connectionType: 'ETHERNET'
+              });
+            }}
+            className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-all"
+            title="Add Demo Devices"
+          >
+            <Activity size={14} />
+          </button>
+          <button 
+            onClick={handleDiscovery}
+            disabled={isDiscovering}
+            className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+            title="Scan Network"
+          >
+            {isDiscovering ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+          </button>
+        </div>
       </div>
         
       <div className="space-y-3">

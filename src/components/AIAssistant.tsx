@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 export const AIAssistant: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [apiKeyMissing] = useState(!process.env.GEMINI_API_KEY);
   const { setFullState, getIOProfile } = useStore();
 
   const handleGenerate = async () => {
@@ -17,9 +18,9 @@ export const AIAssistant: React.FC = () => {
       const result = await generateProgram(prompt, profile);
       setFullState(result.rows, result.widgets);
       setPrompt('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Generation failed:', error);
-      alert('Failed to generate program. Please try again.');
+      alert(error.message || 'Failed to generate program. Please ensure your GEMINI_API_KEY is set correctly.');
     } finally {
       setIsGenerating(false);
     }
@@ -36,6 +37,15 @@ export const AIAssistant: React.FC = () => {
           <p className="text-[10px] text-zinc-500">Generate logic and HMI with natural language</p>
         </div>
       </div>
+
+      {apiKeyMissing && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
+          <p className="text-xs text-red-400 font-bold uppercase tracking-widest mb-1">⚠️ API Key Missing</p>
+          <p className="text-[10px] text-zinc-500 leading-relaxed">
+            The GEMINI_API_KEY is not set. Please add it to your <code className="bg-black px-1 rounded">.env</code> file or environment variables to enable AI features.
+          </p>
+        </div>
+      )}
 
       <div className="relative">
         <textarea

@@ -30,10 +30,10 @@ async function startServer() {
 
     const baseIp = addresses[0].split(".").slice(0, 3).join(".");
     const discoveredDevices: any[] = [];
-    const portsToScan = [80, 81, 502]; // HTTP, WS, Modbus
+    const portsToScan = [80, 81, 502, 443, 8080, 1883]; // HTTP, WS, Modbus, HTTPS, Alt HTTP, MQTT
     
     // Scan a range of IPs
-    const scanRange = Array.from({ length: 50 }, (_, i) => i + 1); // Scan first 50
+    const scanRange = Array.from({ length: 100 }, (_, i) => i + 1); // Scan first 100
     
     const scanPromises = scanRange.map(async (i) => {
       const targetIp = `${baseIp}.${i}`;
@@ -44,7 +44,7 @@ async function startServer() {
         try {
           await new Promise((resolve, reject) => {
             const socket = new net.Socket();
-            socket.setTimeout(150); 
+            socket.setTimeout(200); // Slightly longer timeout
             
             socket.on("connect", () => {
               socket.destroy();
@@ -64,12 +64,19 @@ async function startServer() {
             socket.connect(port, targetIp);
           });
 
+          let deviceType = "ARDUINO";
+          if (port === 502) deviceType = "PLC";
+          else if (port === 1883) deviceType = "IOT_GATEWAY";
+          else if (targetIp.endsWith(".60") || port === 8080) deviceType = "VFD";
+          else if (port === 443) deviceType = "PLC"; // Some modern PLCs use HTTPS for management
+
           discoveredDevices.push({
-            name: `Node_${targetIp.split('.').pop()}`,
+            name: `${deviceType}_${targetIp.split('.').pop()}`,
             address: targetIp,
             port: port,
-            type: port === 502 ? "PLC" : "ARDUINO",
-            connectionType: "ETHERNET"
+            type: deviceType,
+            connectionType: "ETHERNET",
+            status: 'DISCONNECTED'
           });
           break; 
         } catch (e) {}
