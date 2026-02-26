@@ -16,7 +16,7 @@ export const AIChat: React.FC = () => {
     { role: 'model', text: 'Hello! I am Neurox AI. How can I help you with your industrial automation project today?' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(!process.env.GEMINI_API_KEY);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false); // Key is now hardcoded in the service
   const scrollRef = useRef<HTMLDivElement>(null);
   const { setFullState, getIOProfile, rows, widgets, variables, devices } = useStore();
 
@@ -109,8 +109,27 @@ export const AIChat: React.FC = () => {
         {apiKeyMissing && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl mb-4">
             <p className="text-xs text-red-400 font-bold uppercase tracking-widest mb-1">⚠️ API Key Missing</p>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              The GEMINI_API_KEY is not set. Please add it to your <code className="bg-black px-1 rounded">.env</code> file or environment variables to enable AI features.
+            <p className="text-[10px] text-zinc-500 leading-relaxed mb-3">
+              The GEMINI_API_KEY is not set. Please add it to your environment variables or select a paid API key to enable AI features.
+            </p>
+            <button
+              onClick={async () => {
+                // @ts-ignore
+                if (window.aistudio?.openSelectKey) {
+                  // @ts-ignore
+                  await window.aistudio.openSelectKey();
+                  // Proceed to reload or re-check
+                  window.location.reload();
+                } else {
+                  alert("API key selection is not available in this environment. Please set GEMINI_API_KEY in your .env file.");
+                }
+              }}
+              className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-red-500/30"
+            >
+              Select Paid API Key
+            </button>
+            <p className="text-[8px] text-zinc-600 mt-2 text-center">
+              Note: Paid keys require a Google Cloud project with billing enabled.
             </p>
           </div>
         )}

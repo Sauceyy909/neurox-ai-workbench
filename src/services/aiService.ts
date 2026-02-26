@@ -1,17 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { LadderRow, HMIWidget, DeviceProfile } from "../store/useStore";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
-function checkApiKey() {
-  if (!apiKey || apiKey === "") {
-    throw new Error("GEMINI_API_KEY is missing. Please set it in your environment variables or .env file.");
+function getAI() {
+  // Priority: 1. Platform Secret, 2. User Selection, 3. Hardcoded Fallback
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || "AIzaSyB-q2v1F4rvLXgSwjhYWXQWHlWRRAyXLUE";
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing. Please select a key via the 'Select Paid API Key' button in the chat.");
   }
+  return new GoogleGenAI({ apiKey });
 }
 
 export async function generateProgram(prompt: string, profile: DeviceProfile): Promise<{ rows: LadderRow[], widgets: HMIWidget[] }> {
-  checkApiKey();
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `You are an elite industrial automation engineer. Generate a high-reliability PLC ladder logic program and a professional HMI interface for the following request: "${prompt}".
@@ -93,7 +93,7 @@ export async function chatWithAI(
   history: { role: 'user' | 'model', parts: { text: string }[] }[],
   currentState?: { rows: LadderRow[], widgets: HMIWidget[], variables: Record<string, any>, devices: any[] }
 ) {
-  checkApiKey();
+  const ai = getAI();
   
   let contextInstruction = `You are Neurox AI, an elite industrial automation assistant. 
       Your primary goal is to HELP THE USER BUILD, EDIT, DEBUG, and TROUBLESHOOT their PLC, VFD, and Arduino projects.
